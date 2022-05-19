@@ -21,6 +21,8 @@ use futures::future::join_all;
 use graphql_watchman::WatchmanFileSourceSubscriptionNextChange;
 use log::{debug, info};
 use rayon::prelude::*;
+use std::fs::File;
+use std::io::Write;
 use std::sync::Arc;
 use tokio::{
     sync::Notify,
@@ -392,6 +394,13 @@ async fn build_projects<TPerfLogger: PerfLogger + 'static>(
 
     if build_cancelled_during_commit {
         return Err(Error::Cancelled);
+    }
+
+    // If requested, write a file with the persistence map
+    if let Some(path) = &config.output_persistence_info {
+        let mut file = File::create(&path).unwrap();
+        let map = serde_json::to_string_pretty(&compiler_state.artifacts).unwrap();
+        file.write_all(map.as_bytes()).unwrap();
     }
 
     Ok(())

@@ -74,6 +74,10 @@ struct CompileCommand {
     #[clap(long)]
     repersist: bool,
 
+
+    #[clap(long)]
+    persistence_info: Option<PathBuf>,
+
     /// Verbosity level
     #[clap(long, arg_enum, default_value = "verbose")]
     output: OutputKind,
@@ -271,6 +275,7 @@ async fn handle_compiler_command(command: CompileCommand) -> Result<(), Error> {
         FileSourceKind::WalkDir
     };
     config.repersist_operations = command.repersist;
+    config.output_persistence_info = command.persistence_info;
 
     if command.watch && !matches!(&config.file_source_config, FileSourceKind::Watchman) {
         panic!(

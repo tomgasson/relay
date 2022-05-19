@@ -94,6 +94,9 @@ pub struct Config {
     /// Do not reuse persist ids from artifacts even if the text hash matches.
     pub repersist_operations: bool,
 
+    /// print the persistence map as JSON
+    pub output_persistence_info: Option<PathBuf>,
+
     pub saved_state_config: Option<ScmAwareClockData>,
     pub saved_state_loader: Option<Box<dyn SavedStateLoader + Send + Sync>>,
     pub saved_state_version: String,
@@ -366,6 +369,7 @@ Example file:
             compile_everything: false,
             repersist_operations: false,
             post_artifacts_write: None,
+            output_persistence_info: None,
             additional_validations: None,
             is_dev_variable_name: config_file.is_dev_variable_name,
             file_source_config: FileSourceKind::Watchman,

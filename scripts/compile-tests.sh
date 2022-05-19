@@ -8,4 +8,4 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 GITHUB_ROOT=$(dirname "$SCRIPT_DIR")
 
 cd "$GITHUB_ROOT"/compiler
-cargo run --bin relay --release -- "$GITHUB_ROOT"/scripts/config.tests.json
+cargo run --bin relay --release -- "$GITHUB_ROOT"/scripts/config.tests.json --persistenceInfo persist.json
