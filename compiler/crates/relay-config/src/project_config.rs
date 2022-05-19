@@ -30,7 +30,7 @@ type FnvIndexMap<K, V> = IndexMap<K, V, FnvBuildHasher>;
 pub type ProjectName = StringKey;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct RemotePersistConfig {
     /// URL to send a POST request to to persist.
     pub url: String,
@@ -45,6 +45,9 @@ pub struct RemotePersistConfig {
         deserialize_with = "deserialize_semaphore_permits"
     )]
     pub semaphore_permits: Option<usize>,
+
+    #[serde(default)]
+    pub safe_migration: bool,
 }
 
 fn deserialize_semaphore_permits<'de, D>(d: D) -> Result<Option<usize>, D::Error>
@@ -81,6 +84,9 @@ pub struct LocalPersistConfig {
 
     #[serde(default)]
     pub algorithm: LocalPersistAlgorithm,
+
+    #[serde(default)]
+    pub safe_migration: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]

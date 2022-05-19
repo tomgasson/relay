@@ -5,7 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use crate::ast::{Ast, AstBuilder, AstKey, ObjectEntry, Primitive, QueryID, RequestParameters};
+use crate::ast::{
+    Ast, AstBuilder, AstKey, RequestFormat, ObjectEntry, Primitive, QueryID, RequestParameters,
+};
 use crate::build_ast::{
     build_fragment, build_operation, build_provided_variables, build_request, build_request_params,
     build_request_params_ast_key,
@@ -47,7 +49,7 @@ pub fn print_request(
     schema: &SDLSchema,
     operation: &OperationDefinition,
     fragment: &FragmentDefinition,
-    request_parameters: RequestParameters<'_>,
+    request_parameters: RequestParameters,
     project_config: &ProjectConfig,
     top_level_statements: &mut TopLevelStatements,
 ) -> String {
@@ -68,7 +70,11 @@ pub fn print_request_params(
     top_level_statements: &mut TopLevelStatements,
 ) -> String {
     let mut request_parameters = build_request_params(operation);
-    request_parameters.id = query_id;
+    request_parameters.request_format = if let Some(query_id) = &query_id {
+        Some(RequestFormat::ID(query_id.clone()))
+    } else {
+        None
+    };
 
     let mut builder = AstBuilder::default();
     let request_parameters_ast_key = build_request_params_ast_key(
@@ -156,7 +162,7 @@ impl<'p> Printer<'p> {
         schema: &SDLSchema,
         operation: &OperationDefinition,
         fragment: &FragmentDefinition,
-        request_parameters: RequestParameters<'_>,
+        request_parameters: RequestParameters,
         top_level_statements: &mut TopLevelStatements,
     ) -> String {
         let request_parameters = build_request_params_ast_key(
@@ -218,7 +224,7 @@ impl<'p> Printer<'p> {
     pub fn print_request_params(
         &mut self,
         schema: &SDLSchema,
-        request_parameters: RequestParameters<'_>,
+        request_parameters: RequestParameters,
         operation: &OperationDefinition,
         top_level_statements: &mut TopLevelStatements,
     ) -> String {

@@ -133,9 +133,14 @@ pub enum QueryID {
     External(StringKey),
 }
 
-pub struct RequestParameters<'a> {
-    pub id: &'a Option<QueryID>,
+pub enum RequestFormat {
+    ID(QueryID),
+    Text(String),
+    Migration(QueryID, String)
+}
+
+pub struct RequestParameters {
     pub name: StringKey,
     pub operation_kind: OperationKind,
-    pub text: Option<String>,
+    pub request_format: Option<RequestFormat>
 }

@@ -12,7 +12,10 @@ use super::content_section::{
 use crate::config::{Config, ProjectConfig};
 use common::NamedItem;
 use graphql_ir::{FragmentDefinition, OperationDefinition};
-use relay_codegen::{build_request_params, Printer, QueryID, TopLevelStatement, CODEGEN_CONSTANTS};
+use relay_codegen::{
+    build_request_params, Printer, QueryID, RequestFormat, TopLevelStatement, CODEGEN_CONSTANTS,
+};
+use relay_config::PersistConfig;
 use relay_transforms::{
     is_operation_preloadable, ReactFlightLocalComponentsMetadata, RelayClientComponentMetadata,
     RelayDataDrivenDependencyMetadata, ASSIGNABLE_DIRECTIVE,
@@ -158,11 +161,25 @@ pub fn generate_operation(
     skip_types: bool,
 ) -> Result<Vec<u8>, FmtError> {
     let mut request_parameters = build_request_params(normalization_operation);
-    if id_and_text_hash.is_some() {
-        request_parameters.id = id_and_text_hash;
+
+    request_parameters.request_format = if let Some(id_and_text_hash) = id_and_text_hash {
+        let safe_migration = match &project_config.persist {
+            Some(PersistConfig::Remote(config)) => config.safe_migration,
+            Some(PersistConfig::Local(config)) => config.safe_migration,
+            None => false,
+        };
+        if safe_migration {
+            Some(RequestFormat::Migration(
+                id_and_text_hash.clone(),
+                text.into(),
+            ))
+        } else {
+            Some(RequestFormat::ID(id_and_text_hash.clone()))
+        }
     } else {
-        request_parameters.text = Some(text.into());
+        Some(RequestFormat::Text(text.into()))
     };
+
     let operation_fragment = FragmentDefinition {
         name: reader_operation.name,
         variable_definitions: reader_operation.variable_definitions.clone(),
@@ -200,7 +217,9 @@ pub fn generate_operation(
 
     // -- Begin Metadata Annotations Section --
     let mut section = CommentAnnotationsSection::default();
-    if let Some(QueryID::Persisted { id, .. }) = &request_parameters.id {
+    if let Some(RequestFormat::ID(QueryID::Persisted { id, .. })) =
+        &request_parameters.request_format
+    {
         writeln!(section, "@relayRequestID {}", id)?;
     }
     if project_config.variable_names_comment {

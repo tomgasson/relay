@@ -42,32 +42,39 @@ export type NormalizationRootNode =
 
 export type ProvidedVariablesType = {+[key: string]: {|get(): mixed|}};
 
+type IDFormat = {|
+  +id: string,
+  +text: null,
+|};
+type TextFormat = {|
+  +cacheID: string,
+  +id: null,
+  +text: string,
+|};
+type MigrationFormat = {|
+  +id: string,
+  +cacheID: string,
+  +text: string,
+|};
+
+type RequestFormat =
+  | IDFormat
+  | TextFormat
+  | MigrationFormat;
+
 /**
  * Contains the parameters required for executing a GraphQL request.
- * The operation can either be provided as a persisted `id` or `text`. If given
- * in `text` format, a `cacheID` as a hash of the text should be set to be used
- * for local caching.
+ * The operation can either be provided as a persisted `id` or `text` or both. 
+ * If `text` format is provided, a `cacheID` as a hash of the text should be set
+ * to be used for local caching.
  */
-export type RequestParameters =
-  | {|
-      +id: string,
-      +text: null,
-      // common fields
-      +name: string,
-      +operationKind: 'mutation' | 'query' | 'subscription',
-      +providedVariables?: ProvidedVariablesType,
-      +metadata: {[key: string]: mixed, ...},
-    |}
-  | {|
-      +cacheID: string,
-      +id: null,
-      +text: string,
-      // common fields
-      +name: string,
-      +operationKind: 'mutation' | 'query' | 'subscription',
-      +providedVariables?: ProvidedVariablesType,
-      +metadata: {[key: string]: mixed, ...},
-    |};
+export type RequestParameters = {|
+  +name: string,
+  +operationKind: 'mutation' | 'query' | 'subscription',
+  +providedVariables?: ProvidedVariablesType,
+  +metadata: {[key: string]: mixed, ...},
+  ...RequestFormat,
+|};
 
 export type GeneratedNode =
   | ConcreteRequest

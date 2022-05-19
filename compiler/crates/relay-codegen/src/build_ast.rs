@@ -5,7 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use crate::ast::{Ast, AstBuilder, AstKey, ObjectEntry, Primitive, QueryID, RequestParameters};
+use crate::ast::{
+    Ast, AstBuilder, AstKey, ObjectEntry, Primitive, QueryID, RequestFormat, RequestParameters,
+};
 use crate::constants::CODEGEN_CONSTANTS;
 use crate::object;
 use crate::top_level_statements::TopLevelStatements;
@@ -36,7 +38,7 @@ use schema::{SDLSchema, Schema};
 
 pub fn build_request_params_ast_key(
     schema: &SDLSchema,
-    request_parameters: RequestParameters<'_>,
+    request_parameters: RequestParameters,
     ast_builder: &mut AstBuilder,
     operation: &OperationDefinition,
     top_level_statements: &TopLevelStatements,
@@ -105,12 +107,11 @@ pub fn build_request(
     }))
 }
 
-pub fn build_request_params(operation: &OperationDefinition) -> RequestParameters<'_> {
+pub fn build_request_params(operation: &OperationDefinition) -> RequestParameters {
     RequestParameters {
         name: operation.name.item,
         operation_kind: operation.kind,
-        id: &None,
-        text: None,
+        request_format: None,
     }
 }
 
@@ -434,12 +435,8 @@ impl<'schema, 'builder, 'config> CodegenBuilder<'schema, 'builder, 'config> {
                 {
                     // If inline fragment has @__inline directive (created by inline_data_fragment transform)
                     // we will return selection wrapped with InlineDataFragmentSpread
-                    vec![
-                        self.build_inline_data_fragment_spread(
-                            inline_fragment,
-                            inline_data_directive,
-                        ),
-                    ]
+                    vec![self
+                        .build_inline_data_fragment_spread(inline_fragment, inline_data_directive)]
                 } else if let Some(module_metadata) =
                     ModuleMetadata::find(&inline_fragment.directives)
                 {
@@ -1370,7 +1367,7 @@ impl<'schema, 'builder, 'config> CodegenBuilder<'schema, 'builder, 'config> {
     fn build_request_parameters(
         &mut self,
         operation: &OperationDefinition,
-        request_parameters: RequestParameters<'_>,
+        request_parameters: RequestParameters,
         top_level_statements: &TopLevelStatements,
     ) -> AstKey {
         let mut metadata_items: Vec<ObjectEntry> = operation
@@ -1425,42 +1422,49 @@ impl<'schema, 'builder, 'config> CodegenBuilder<'schema, 'builder, 'config> {
             }),
         };
 
-        let id_prop = ObjectEntry {
-            key: CODEGEN_CONSTANTS.id,
-            value: match request_parameters.id {
-                Some(QueryID::Persisted { id, .. }) => Primitive::RawString(id.clone()),
-                Some(QueryID::External(name)) => Primitive::JSModuleDependency(*name),
-                None => Primitive::Null,
-            },
+        let id_prop = if let Some(RequestFormat::ID(ref id) | RequestFormat::Migration(ref id, _)) =
+            request_parameters.request_format
+        {
+            match id {
+                QueryID::Persisted { id, .. } => ObjectEntry {
+                    key: CODEGEN_CONSTANTS.id,
+                    value: Primitive::RawString(id.clone()),
+                },
+                QueryID::External(name) => ObjectEntry {
+                    key: CODEGEN_CONSTANTS.id,
+                    value: Primitive::JSModuleDependency(*name),
+                },
+            }
+        } else {
+            ObjectEntry {
+                key: CODEGEN_CONSTANTS.id,
+                value: Primitive::Null,
+            }
         };
 
-        let mut params_object = if let Some(text) = request_parameters.text {
-            vec![
+        let mut params_object = vec![id_prop, metadata_prop, name_prop, operation_kind_prop];
+
+        if let Some(RequestFormat::Migration(_, text) | RequestFormat::Text(text)) =
+            request_parameters.request_format
+        {
+            // cacheID inserted first to maintain consistency with existing generation
+            params_object.insert(
+                0,
                 ObjectEntry {
                     key: CODEGEN_CONSTANTS.cache_id,
                     value: Primitive::RawString(md5(&text)),
                 },
-                id_prop,
-                metadata_prop,
-                name_prop,
-                operation_kind_prop,
-                ObjectEntry {
-                    key: CODEGEN_CONSTANTS.text,
-                    value: Primitive::RawString(text),
-                },
-            ]
+            );
+            params_object.push(ObjectEntry {
+                key: CODEGEN_CONSTANTS.text,
+                value: Primitive::RawString(text),
+            });
         } else {
-            vec![
-                id_prop,
-                metadata_prop,
-                name_prop,
-                operation_kind_prop,
-                ObjectEntry {
-                    key: CODEGEN_CONSTANTS.text,
-                    value: Primitive::Null,
-                },
-            ]
-        };
+            params_object.push(ObjectEntry {
+                key: CODEGEN_CONSTANTS.text,
+                value: Primitive::Null,
+            });
+        }
 
         let provided_variables = if top_level_statements
             .contains(CODEGEN_CONSTANTS.provided_variables_definition.lookup())

@@ -17,7 +17,7 @@ mod printer;
 mod top_level_statements;
 mod utils;
 
-pub use ast::{AstBuilder, Primitive, QueryID, RequestParameters};
+pub use ast::{AstBuilder, Primitive, QueryID, RequestParameters, RequestFormat};
 pub use build_ast::{
     build_request_params, is_static_storage_key_available, CodegenBuilder, CodegenVariant,
 };
